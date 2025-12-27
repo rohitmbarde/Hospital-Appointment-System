@@ -61,6 +61,7 @@ def list_unavailability(db: Session = Depends(get_db)):
                 doctor_id=unavailable.doctor_id,
                 doctor_name=doctor.name,
                 date=unavailable.date,
+                end_date=unavailable.end_date,
                 reason=unavailable.reason
             )
         )
@@ -73,9 +74,14 @@ def add_unavailability(payload: DoctorUnavailableCreate, db: Session = Depends(g
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
     
+    # Validate that end_date is after or equal to start date
+    if payload.end_date and payload.end_date < payload.date:
+        raise HTTPException(status_code=400, detail="End date must be after or equal to start date")
+    
     record = DoctorUnavailable(
         doctor_id=payload.doctor_id, 
         date=payload.date,
+        end_date=payload.end_date,
         reason=payload.reason
     )
     db.add(record)
@@ -88,6 +94,7 @@ def add_unavailability(payload: DoctorUnavailableCreate, db: Session = Depends(g
         doctor_id=record.doctor_id,
         doctor_name=doctor.name,
         date=record.date,
+        end_date=record.end_date,
         reason=record.reason
     )
 

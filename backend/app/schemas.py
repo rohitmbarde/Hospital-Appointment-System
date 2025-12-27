@@ -66,7 +66,8 @@ class AppointmentOut(BaseModel):
 
 class DoctorUnavailableCreate(BaseModel):
     doctor_id: int
-    date: date
+    date: date  # Start date of leave
+    end_date: Optional[date] = None  # End date of leave (optional, for date ranges)
     reason: Optional[str] = None
 
 
@@ -75,6 +76,7 @@ class DoctorUnavailableOut(BaseModel):
     doctor_id: int
     doctor_name: str
     date: date
+    end_date: Optional[date] = None
     reason: Optional[str]
 
     class Config:

@@ -4,7 +4,7 @@ from datetime import datetime
 import streamlit as st
 import requests
 
-API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:8002")
 
 # Professional Healthcare Theme Configuration
 st.set_page_config(
@@ -281,14 +281,34 @@ if role == "Patient":
         with col1:
             doctor_choice = st.selectbox("👨‍⚕️ Select Doctor", list(doctor_map.keys()), key="doctor_select")
         
+        # Dynamically load slots when doctor is selected
+        selected_doctor_id = doctor_map[doctor_choice]
+        
+        # Check if we need to fetch new slots
+        if "current_doctor_id" not in st.session_state or st.session_state["current_doctor_id"] != selected_doctor_id:
+            with st.spinner(f"📅 Loading available slots for {doctor_choice}..."):
+                try:
+                    doctor_slots_response = get_json(f"/api/patient/doctors/{selected_doctor_id}/available-slots")
+                    st.session_state["current_doctor_slots"] = doctor_slots_response.get("available_slots", [])
+                    st.session_state["current_doctor_id"] = selected_doctor_id
+                except Exception as e:
+                    st.error(f"❌ Error loading slots: {str(e)}")
+                    st.session_state["current_doctor_slots"] = []
+        
+        # Get slots for selected doctor
+        slot_options = st.session_state.get("current_doctor_slots", triage_result["available_slots"])
+        
         with col2:
-            slot_options = triage_result["available_slots"]
-            slot_labels = [datetime.fromisoformat(s).strftime("%d %B %Y, %I:%M %p") for s in slot_options]
-            slot_choice = st.selectbox("🗓️ Choose Appointment Slot", slot_labels, key="slot_select")
+            if slot_options:
+                slot_labels = [datetime.fromisoformat(s).strftime("%d %B %Y, %I:%M %p") for s in slot_options]
+                slot_choice = st.selectbox("🗓️ Choose Appointment Slot", slot_labels, key="slot_select")
+            else:
+                st.warning("⚠️ No available slots for this doctor. Please try another doctor or contact the hospital.")
+                slot_choice = None
         
         st.info("💡 **Tip:** Please arrive 10-15 minutes before your scheduled appointment time.")
         
-        if st.button("✅ Confirm Booking", use_container_width=True, type="primary"):
+        if st.button("✅ Confirm Booking", use_container_width=True, type="primary", disabled=not slot_choice):
             with st.spinner("📝 Booking your appointment..."):
                 try:
                     payload = {
@@ -440,8 +460,8 @@ if role == "Admin":
                     import pandas as pd
                     df = pd.DataFrame(leave_records)
                     
-                    # Enhance display - Simple table with doctor name
-                    display_columns = ['id', 'doctor_name', 'date', 'reason']
+                    # Enhance display - Simple table with doctor name and date range
+                    display_columns = ['id', 'doctor_name', 'date', 'end_date', 'reason']
                     df_display = df[[col for col in display_columns if col in df.columns]]
                     
                     st.dataframe(
@@ -451,7 +471,8 @@ if role == "Admin":
                         column_config={
                             "id": st.column_config.NumberColumn("Leave ID", width="small"),
                             "doctor_name": st.column_config.TextColumn("Doctor Name", width="medium"),
-                            "date": st.column_config.DateColumn("Leave Date", width="medium"),
+                            "date": st.column_config.DateColumn("Start Date", width="medium"),
+                            "end_date": st.column_config.DateColumn("End Date", width="medium"),
                             "reason": st.column_config.TextColumn("Reason"),
                         }
                     )
@@ -505,7 +526,15 @@ if role == "Admin":
                     selected_doctor = st.selectbox("👨‍⚕️ Select Doctor *", list(doctor_options.keys()))
                     doctor_id = doctor_options[selected_doctor]
                     
-                    leave_date = st.date_input("🗓️ Leave Date *", key="leave_date")
+                    # Date range selection
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        leave_start_date = st.date_input("🗓️ Leave Start Date *", key="leave_start_date")
+                    with col2:
+                        leave_end_date = st.date_input("🗓️ Leave End Date (Optional)", key="leave_end_date", value=None)
+                    
+                    st.caption("💡 Leave only the end date empty for a single day leave. For multi-day leave, select both dates.")
+                    
                     leave_reason = st.text_area("📝 Reason *", placeholder="e.g., Medical Conference, Personal Leave, Vacation, Annual Leave", height=100)
                     
                     submit_leave = st.form_submit_button("✅ Add Leave Record", use_container_width=True, type="primary")
@@ -513,11 +542,14 @@ if role == "Admin":
                     if submit_leave:
                         if not leave_reason:
                             st.error("❌ Please provide a reason for leave")
+                        elif leave_end_date and leave_end_date < leave_start_date:
+                            st.error("❌ End date must be after or equal to start date")
                         else:
                             try:
                                 payload = {
                                     "doctor_id": doctor_id,
-                                    "date": leave_date.isoformat(),
+                                    "date": leave_start_date.isoformat(),
+                                    "end_date": leave_end_date.isoformat() if leave_end_date else None,
                                     "reason": leave_reason
                                 }
                                 
@@ -530,7 +562,8 @@ if role == "Admin":
                                 
                                 if response.status_code == 200:
                                     st.success(f"✅ Leave record added successfully!")
-                                    st.info(f"🏥 **Doctor:** {selected_doctor.split(' (ID:')[0]}\n\n📅 **Date:** {leave_date}\n\n📝 **Reason:** {leave_reason}")
+                                    date_display = f"{leave_start_date}" if not leave_end_date else f"{leave_start_date} to {leave_end_date}"
+                                    st.info(f"🏥 **Doctor:** {selected_doctor.split(' (ID:')[0]}\n\n📅 **Leave Period:** {date_display}\n\n📝 **Reason:** {leave_reason}")
                                     st.balloons()
                                 else:
                                     st.error(f"❌ Failed to add leave: {response.text}")

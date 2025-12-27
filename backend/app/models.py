@@ -43,7 +43,8 @@ class DoctorUnavailable(Base):
     __tablename__ = "doctor_unavailable"
     id = Column(Integer, primary_key=True, index=True)
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False)
-    date = Column(Date, nullable=False)
+    date = Column(Date, nullable=False)  # Start date (kept for backward compatibility)
+    end_date = Column(Date, nullable=True)  # End date for leave range
     reason = Column(String, nullable=True)
 
     doctor = relationship("Doctor", back_populates="unavailable")

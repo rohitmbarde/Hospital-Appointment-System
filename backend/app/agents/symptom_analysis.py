@@ -39,7 +39,14 @@ class SymptomAnalysisAgent:
             # Other
             "fracture", "broken", "sprain", "strain", "allergy", "asthma", "diabetes",
             "pressure", "sugar", "urinary", "urine", "kidney", "liver", "thyroid",
-            "vision", "blurred", "hearing", "balance", "vertigo", "palpitation"
+            "vision", "blurred", "hearing", "balance", "vertigo", "palpitation",
+            # Women's health / Gynecological
+            "period", "periods", "menstrual", "menstruation", "cycle", "irregular",
+            "pregnancy", "pregnant", "ovarian", "uterus", "vaginal", "pelvic",
+            "cramps", "pcod", "pcos", "fibroids", "endometriosis", "menopause",
+            # Mobility / Orthopedic
+            "walking", "mobility", "movement", "limping", "stiffness", "joint",
+            "muscle", "bone", "spine", "hip", "ankle", "wrist", "elbow"
         ]
         self.llm_client = GroqClient()
 

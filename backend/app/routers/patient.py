@@ -77,6 +77,24 @@ def triage(request: TriageRequest, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/doctors/{doctor_id}/available-slots")
+def get_doctor_slots(doctor_id: int, db: Session = Depends(get_db)):
+    """Get available slots for a specific doctor"""
+    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    
+    slots = scheduling_agent.get_available_slots(db, doctor_id, days_ahead=14)
+    if not slots:
+        return {"doctor_id": doctor_id, "available_slots": [], "message": "No available slots"}
+    
+    return {
+        "doctor_id": doctor_id,
+        "doctor_name": doctor.name,
+        "available_slots": slots[:20],  # Limit to 20 slots
+    }
+
+
 @router.post("/appointments", response_model=AppointmentOut)
 async def book_appointment(request: AppointmentCreate, db: Session = Depends(get_db)):
     doctor = db.query(Doctor).filter(Doctor.id == request.doctor_id).first()
