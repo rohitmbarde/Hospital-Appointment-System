@@ -46,7 +46,9 @@ class SymptomAnalysisAgent:
             "cramps", "pcod", "pcos", "fibroids", "endometriosis", "menopause",
             # Mobility / Orthopedic
             "walking", "mobility", "movement", "limping", "stiffness", "joint",
-            "muscle", "bone", "spine", "hip", "ankle", "wrist", "elbow"
+            "muscle", "bone", "spine", "hip", "ankle", "wrist", "elbow",
+            # Swallowing / Throat
+            "swallow", "swallowing", "dysphagia", "difficulty swallowing", "choking"
         ]
         self.llm_client = GroqClient()
 
